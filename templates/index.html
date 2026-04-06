@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cloud File Uploader</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 6px;
+      color: #38bdf8;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 40px;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 900px;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+    }
+
+    /* Drop Zone */
+    #drop-zone {
+      border: 2px dashed #334155;
+      border-radius: 12px;
+      padding: 50px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    #drop-zone.dragover {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    #drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    #drop-zone .icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    #drop-zone p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    #drop-zone span {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    /* File list preview */
+    #file-list {
+      margin-top: 20px;
+    }
+
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      font-size: 0.88rem;
+    }
+
+    .file-item .fname { color: #e2e8f0; word-break: break-all; }
+    .file-item .fsize { color: #64748b; margin-left: 10px; white-space: nowrap; }
+
+    /* Upload button */
+    #upload-btn {
+      margin-top: 20px;
+      width: 100%;
+      padding: 13px;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: none;
+    }
+
+    #upload-btn:hover { background: #0ea5e9; }
+    #upload-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+
+    /* Progress bar */
+    #progress-wrap {
+      margin-top: 14px;
+      display: none;
+    }
+
+    #progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    #progress-bar-outer {
+      background: #0f172a;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #38bdf8;
+      border-radius: 99px;
+      transition: width 0.2s;
+    }
+
+    /* Result messages */
+    #result {
+      margin-top: 18px;
+      font-size: 0.9rem;
+    }
+
+    .success { color: #4ade80; }
+    .error   { color: #f87171; }
+
+    /* Uploaded files table */
+    .section-title {
+      font-size: 1.1rem;
+      color: #94a3b8;
+      margin: 36px 0 14px;
+      font-weight: 600;
+    }
+
+    #files-table-wrap {
+      width: 100%;
+      max-width: 900px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 880px;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: #0f172a;
+      color: #64748b;
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-top: 1px solid #0f172a;
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    tr:hover td { background: #0f172a44; }
+
+    .badge {
+      display: inline-block;
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+    }
+
+    .download-btn {
+      display: inline-block;
+      background: #38bdf8;
+      color: #0f172a;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 6px 10px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .download-btn:hover {
+      background: #0ea5e9;
+    }
+
+    #refresh-btn {
+      background: none;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-left: 10px;
+      transition: border-color 0.2s;
+    }
+    #refresh-btn:hover { border-color: #38bdf8; color: #38bdf8; }
+  </style>
+</head>
+<body>
+
+  <h1>&#9729; Cloud File Uploader</h1>
+  <p class="subtitle">Bucket: <strong style="color:#38bdf8">{{ bucket }}</strong> &nbsp;|&nbsp; Datnass</p>
+
+  <div class="card">
+    <!-- Drop Zone -->
+    <div id="drop-zone">
+      <input type="file" id="file-input" multiple />
+      <div class="icon">&#128196;</div>
+      <p><span>Click to choose</span> or drag & drop files here</p>
+      <p style="margin-top:6px; font-size:0.8rem;">Any file type &bull; Multiple files supported</p>
+    </div>
+
+    <!-- Selected file list -->
+    <div id="file-list"></div>
+
+    <!-- Upload button -->
+    <button id="upload-btn" onclick="uploadFiles()">&#8679; Upload to Cloud</button>
+
+    <!-- Progress -->
+    <div id="progress-wrap">
+      <div id="progress-label">
+        <span id="progress-status">Uploading...</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div id="progress-bar-outer"><div id="progress-bar"></div></div>
+    </div>
+
+    <!-- Result -->
+    <div id="result"></div>
+  </div>
+
+  <!-- Files already in bucket -->
+  <p class="section-title">
+    Files in Bucket
+    <button id="refresh-btn" onclick="loadFiles()">&#8635; Refresh</button>
+  </p>
+  <div id="files-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>File Name</th>
+          <th>Size</th>
+          <th>Last Modified</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="files-tbody">
+        <tr><td colspan="4" style="color:#64748b">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+<script>
+  const dropZone   = document.getElementById('drop-zone');
+  const fileInput  = document.getElementById('file-input');
+  const fileList   = document.getElementById('file-list');
+  const uploadBtn  = document.getElementById('upload-btn');
+  const progressW  = document.getElementById('progress-wrap');
+  const progressB  = document.getElementById('progress-bar');
+  const result     = document.getElementById('result');
+  const progressPct    = document.getElementById('progress-pct');
+  const progressStatus = document.getElementById('progress-status');
+
+  // Drag & drop styling
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    fileInput.files = e.dataTransfer.files;
+    showSelected();
+  });
+
+  fileInput.addEventListener('change', showSelected);
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+  }
+
+  function showSelected() {
+    fileList.innerHTML = '';
+    const files = fileInput.files;
+    if (!files.length) { uploadBtn.style.display = 'none'; return; }
+
+    for (const f of files) {
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.innerHTML = `<span class="fname">&#128196; ${f.name}</span><span class="fsize">${formatSize(f.size)}</span>`;
+      fileList.appendChild(div);
+    }
+    uploadBtn.style.display = 'block';
+    result.innerHTML = '';
+  }
+
+  function uploadFiles() {
+    const files = fileInput.files;
+    if (!files.length) return;
+
+    // Generate a unique ID for this upload session
+    const uploadId = crypto.randomUUID();
+    const totalSize = Array.from(files).reduce((sum, f) => sum + f.size, 0);
+
+    const formData = new FormData();
+    for (const f of files) formData.append('files', f);
+    formData.append('upload_id', uploadId);
+    formData.append('total_size', totalSize);
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Uploading...';
+    progressW.style.display = 'block';
+    progressB.style.width = '0%';
+    progressPct.textContent = '0%';
+    progressStatus.textContent = 'Uploading...';
+    result.innerHTML = '';
+
+    // Poll the server every 500ms for real S3 upload progress
+    const pollInterval = setInterval(async () => {
+      try {
+        const r = await fetch(`/progress/${uploadId}`);
+        const p = await r.json();
+        progressB.style.width = p.pct + '%';
+        progressPct.textContent = p.pct + '%';
+      } catch (_) {}
+    }, 500);
+
+    fetch('/upload', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(data => {
+        clearInterval(pollInterval);
+        progressB.style.width = '100%';
+        progressPct.textContent = '100%';
+        progressStatus.textContent = 'Done';
+
+        let html = '';
+        if (data.uploaded && data.uploaded.length) {
+          html += `<p class="success">&#10003; Uploaded: ${data.uploaded.join(', ')}</p>`;
+        }
+        if (data.errors && data.errors.length) {
+          data.errors.forEach(e => {
+            html += `<p class="error">&#10007; ${e.file}: ${e.error}</p>`;
+          });
+        }
+        result.innerHTML = html;
+
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '⬆ Upload to Cloud';
+        fileInput.value = '';
+        fileList.innerHTML = '';
+        uploadBtn.style.display = 'none';
+        setTimeout(() => { progressW.style.display = 'none'; progressB.style.width = '0%'; progressPct.textContent = '0%'; }, 1500);
+        loadFiles();
+      })
+      .catch(err => {
+        clearInterval(pollInterval);
+        result.innerHTML = `<p class="error">Upload failed: ${err}</p>`;
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '⬆ Upload to Cloud';
+        progressW.style.display = 'none';
+      });
+  }
+
+  // Load files from bucket
+  function loadFiles() {
+    const tbody = document.getElementById('files-tbody');
+    tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b">Loading...</td></tr>';
+
+    fetch('/files')
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          tbody.innerHTML = `<tr><td colspan="4" class="error">${data.error}</td></tr>`;
+          return;
+        }
+        if (!data.files.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b">No files yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.files.map(f => `
+          <tr>
+            <td>${f.name}</td>
+            <td><span class="badge">${formatSize(f.size)}</span></td>
+            <td>${f.last_modified}</td>
+            <td>
+              <a class="download-btn" href="/download/${encodeURIComponent(f.name)}">&#11015; Download</a>
+            </td>
+          </tr>
+        `).join('');
+      })
+      .catch(() => {
+        tbody.innerHTML = '<tr><td colspan="4" class="error">Could not load files.</td></tr>';
+      });
+  }
+
+  loadFiles();
+</script>
+</body>
+</html>
